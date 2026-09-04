@@ -8,7 +8,7 @@ Smart Carpooling is a **ride-sharing and ride-matching system** designed to help
 
 The system combines **graph-based route management, shortest-path optimization, and OpenStreetMap integration** to support efficient route planning and ride matching.
 
-## 🚀 Key Features
+##  Key Features
 
 * User registration and login
 * Create and manage ride offers and requests
@@ -22,7 +22,7 @@ The system combines **graph-based route management, shortest-path optimization, 
 * **OpenStreetMap-based location and route visualization**
 * Route-aware ride matching
 
-## 🧩 System Modules
+##  System Modules
 
 ### 1. User Management
 
@@ -115,10 +115,13 @@ Linked Lists – manages dynamically connected route/data elements
 
 [ User Management ] 
         ↓ 
+        
 [ Ride Management ] (Creates ride request)
         ↓ 
+        
 [ Route Management ] (Calculates shortest path & distance via Dijkstra)
         ↓ 
+        
 [ Ride Matching ] (Finds compatible users based on route overlap)
 
 ## 🎯 Objective
