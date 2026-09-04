@@ -114,12 +114,15 @@ Linked Lists – manages dynamically connected route/data elements
 * **OpenStreetMap** – provides geographical route and location data
 
 [ User Management ] 
+
         ↓ 
         
 [ Ride Management ] (Creates ride request)
+
         ↓ 
         
 [ Route Management ] (Calculates shortest path & distance via Dijkstra)
+
         ↓ 
         
 [ Ride Matching ] (Finds compatible users based on route overlap)
