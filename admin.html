@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #2563eb, #06b6d4);
+      min-height: 100vh;
+      padding: 30px;
+      color: white;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 40px;
+    }
+
+    h1 {
+      font-size: 2.5em;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    #backBtn {
+      background: rgba(255,255,255,0.25);
+      padding: 12px 24px;
+      border-radius: 8px;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+      font-size: 16px;
+    }
+
+    #backBtn:hover {
+      background: rgba(255,255,255,0.35);
+      transform: translateY(-2px);
+    }
+
+    .card {
+      background: rgba(255,255,255,0.15);
+      padding: 30px;
+      border-radius: 16px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      margin-bottom: 30px;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+      font-size: 1.5em;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    input {
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      background: rgba(255,255,255,0.9);
+      transition: all 0.3s ease;
+    }
+
+    input:focus {
+      outline: none;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.3);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      padding: 14px 32px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 16px;
+      color: #1f2937;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px 0 rgba(251, 191, 36, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px 0 rgba(251, 191, 36, 0.4);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .table-container {
+      overflow-x: auto;
+      border-radius: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      color: white;
+    }
+
+    th {
+      background: rgba(255,255,255,0.25);
+      padding: 16px;
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 2px solid rgba(255,255,255,0.3);
+    }
+
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.15);
+    }
+
+    tr:hover {
+      background: rgba(255,255,255,0.1);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .badge-admin {
+      background: #10b981;
+      color: white;
+    }
+
+    .badge-user {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      font-size: 18px;
+    }
+
+    .error {
+      background: rgba(239, 68, 68, 0.2);
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid #ef4444;
+    }
+
+    .success {
+      background: rgba(16, 185, 129, 0.2);
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid #10b981;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 1.8em;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .card {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>Admin Dashboard</h1>
+      <button id="backBtn" onclick="window.location.href='user.html'">⬅ Back to User Portal</button>
+    </header>
+
+    <div id="messageBox"></div>
+
+    <div class="card">
+      <h2>Add New Admin</h2>
+
+      <div class="form-grid">
+        <input type="text" id="newUser" placeholder="Username" autocomplete="off">
+        <input type="password" id="newPass" placeholder="Password">
+        <input type="text" id="newName" placeholder="Full Name">
+      </div>
+
+      <button class="btn-primary" onclick="addAdmin()">Create Admin Account</button>
+    </div>
+
+    <div class="card">
+      <h2>All Users</h2>
+
+      <div class="table-container">
+        <table id="userTable">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Username</th>
+              <th>Full Name</th>
+              <th>Role</th>
+              <th>Phone</th>
+              <th>Vehicle</th>
+            </tr>
+          </thead>
+          <tbody id="userTableBody">
+            <tr><td colspan="6" class="loading">Loading users...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showMessage(message, type = 'success') {
+      const box = document.getElementById('messageBox');
+      box.innerHTML = `<div class="${type}">${message}</div>`;
+      setTimeout(() => {
+        box.innerHTML = '';
+      }, 4000);
+    }
+
+    async function loadUsers() {
+      try {
+        const res = await fetch("/cgi-bin/admin.cgi");
+        
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
+        const users = await res.json();
+        const body = document.getElementById("userTableBody");
+        body.innerHTML = "";
+
+        if (users.length === 0) {
+          body.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px;">No users found</td></tr>';
+          return;
+        }
+
+        users.forEach(u => {
+          const row = document.createElement("tr");
+          const roleBadge = u.role === 'admin' 
+            ? '<span class="badge badge-admin">Admin</span>' 
+            : '<span class="badge badge-user">User</span>';
+          
+          row.innerHTML = `
+            <td><strong>${u.id}</strong></td>
+            <td>${u.username}</td>
+            <td>${u.name}</td>
+            <td>${roleBadge}</td>
+            <td>${u.phone || "—"}</td>
+            <td>${u.vehicle || "—"}</td>
+          `;
+          body.appendChild(row);
+        });
+
+      } catch (e) {
+        console.error('Error loading users:', e);
+        document.getElementById("userTableBody").innerHTML =
+          '<tr><td colspan="6" class="error">Failed to load users. Please check your connection.</td></tr>';
+      }
+    }
+
+    async function addAdmin() {
+      const username = document.getElementById("newUser").value.trim();
+      const password = document.getElementById("newPass").value;
+      const name = document.getElementById("newName").value.trim();
+
+      if (!username || !password || !name) {
+        showMessage('Please fill in all fields', 'error');
+        return;
+      }
+
+      const data = {
+        action: "signup",
+        username: username,
+        password: password,
+        name: name,
+        role: "admin",
+        phone: "",
+        vehicle: ""
+      };
+
+      try {
+        const res = await fetch("/cgi-bin/user.cgi", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        
+        if (res.ok) {
+          showMessage(`${result.message}`, 'success');
+          document.getElementById("newUser").value = "";
+          document.getElementById("newPass").value = "";
+          document.getElementById("newName").value = "";
+          loadUsers();
+        } else {
+          showMessage(`${result.message}`, 'error');
+        }
+
+      } catch (err) {
+        console.error('Error creating admin:', err);
+        showMessage('Failed to create admin. Please try again.', 'error');
+      }
+    }
+
+    // Load users on page load
+    loadUsers();
+
+    // Auto-refresh every 30 seconds
+    setInterval(loadUsers, 30000);
+  </script>
+
+</body>
+</html>

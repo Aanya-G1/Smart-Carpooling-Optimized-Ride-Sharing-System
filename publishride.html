@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Publish Ride (Driver)</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #0072ff, #00c6ff);
+      color: #fff;
+      margin: 0; padding: 0;
+      display: flex; flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .container {
+      background: rgba(0,0,50,0.85);
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+      margin-top: 2rem;
+      width: 90%; max-width: 600px;
+    }
+    input, select, button {
+      width: 100%;
+      margin-top: 10px;
+      padding: 0.6rem;
+      border-radius: 8px;
+      border: none;
+      font-size: 1rem;
+    }
+    button {
+      background: #00bfff;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover { background: #3ecaff; }
+    .back-btn {
+      background: #444;
+      margin-top: 1rem;
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    #map {
+      height: 300px;
+      width: 100%;
+      margin-top: 1rem;
+      border-radius: 10px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h2>Publish a Ride</h2>
+
+  <label>Driver Name:</label>
+  <input type="text" id="driverName" placeholder="Your name">
+
+  <label>From:</label>
+  <input type="text" id="from" placeholder="Start location">
+
+  <label>To:</label>
+  <input type="text" id="to" placeholder="Destination">
+
+  <label>Time:</label>
+  <input type="time" id="time">
+
+  <label>Available Seats:</label>
+  <input type="number" id="seats" min="1" max="6">
+
+  <label>Possible Pickup Points (Select multiple):</label>
+  <select id="pickupPoints" multiple></select>
+
+  <button onclick="publishRide()">Publish Ride</button>
+
+  <pre id="output">Waiting for input...</pre>
+  <div id="map"></div>
+
+  <button class="back-btn" onclick="window.location.href='matching.html'">⬅ Back to Dashboard</button>
+</div>
+
+<script>
+async function getJSON(url, opts) {
+  const res = await fetch(url, opts);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function publishRide() {
+  const from = document.getElementById("from").value.trim();
+  const to = document.getElementById("to").value.trim();
+  const time = document.getElementById("time").value.trim();
+  const seats = document.getElementById("seats").value.trim();
+  const pickupPoints = Array.from(document.getElementById("pickupPoints").selectedOptions).map(o => o.value);
+  const output = document.getElementById("output");
+
+  if (!from || !to || !time || !seats) {
+    output.textContent = "Please fill all fields.";
+    return;
+  }
+
+  const name = document.getElementById("driverName").value.trim();
+
+  let phone = "";
+  let vehicle = "";
+  try {
+    const profileRes = await fetch("/cgi-bin/user.cgi", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "get_profile", username: name })
+    });
+    if (profileRes.ok) {
+      const profile = await profileRes.json();
+      phone = profile.phone;
+      vehicle = profile.vehicle;
+    }
+  } catch (err) {
+    console.warn("Could not fetch driver profile", err);
+  }
+
+  let distanceKm = null;
+  try {
+    const fromData = await getJSON(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(from)}`);
+    const toData   = await getJSON(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(to)}`);
+    if (!fromData.length || !toData.length) throw new Error("Could not geocode locations");
+
+    const fromLon = fromData[0].lon, fromLat = fromData[0].lat;
+    const toLon = toData[0].lon, toLat = toData[0].lat;
+
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${fromLon},${fromLat};${toLon},${toLat}?overview=false&annotations=distance`;
+    const osrmRes = await fetch(osrmUrl);
+    const osrmJson = await osrmRes.json();
+    if (osrmJson && osrmJson.routes && osrmJson.routes.length) {
+      const meters = osrmJson.routes[0].distance;
+      distanceKm = (meters / 1000.0);
+    } else {
+      throw new Error("OSRM returned no route");
+    }
+  } catch (err) {
+    console.warn("Could not compute route distance via OSRM — falling back to straight-line haversine", err);
+    try {
+      const fromData = await getJSON(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(from)}`);
+      const toData   = await getJSON(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(to)}`);
+      if (fromData.length && toData.length) {
+        const lat1 = parseFloat(fromData[0].lat), lon1 = parseFloat(fromData[0].lon);
+        const lat2 = parseFloat(toData[0].lat), lon2 = parseFloat(toData[0].lon);
+        const R = 6371.0;
+        const toRad = v => v * Math.PI / 180;
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+        const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)*Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        distanceKm = R * c;
+      }
+    } catch(e) {
+      console.warn("Haversine fallback failed", e);
+    }
+  }
+
+  if (distanceKm === null) distanceKm = 0.0;
+
+  await loadPickupPoints();
+
+  const payload = {
+    command: "publish_ride",
+    from, to, time,
+    seats: parseInt(seats),
+    name,
+    phone,
+    vehicle,
+    pickups: pickupPoints,
+    distance: Number(distanceKm.toFixed(3))
+  };
+
+  try {
+    const res = await fetch("/cgi-bin/ridematchingapi.cgi", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.status === "success") {
+      output.textContent = (data.message || "Ride published successfully") + ` (distance: ${payload.distance} km)`;
+    } else {
+      output.textContent = (data.message || "Server error");
+    }
+  } catch (err) {
+    output.textContent = "Server error: " + err.message;
+  }
+}
+
+async function getCoordinates(place) {
+  const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(place)}`);
+  const data = await res.json();
+  if (!data.length) throw new Error(`Location not found: ${place}`);
+  return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), display: data[0].display_name };
+}
+
+async function reverseGeocode(lat, lon) {
+  const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+  const data = await res.json();
+  return data.display_name || `${lat.toFixed(4)},${lon.toFixed(4)}`;
+}
+
+let map, routeLayer;
+
+async function loadPickupPoints() {
+  const from = document.getElementById("from").value.trim();
+  const to = document.getElementById("to").value.trim();
+  const select = document.getElementById("pickupPoints");
+  const mapDiv = document.getElementById("map");
+
+  select.innerHTML = "";
+
+  if (!from || !to) return;
+
+  try {
+    const fromCoords = await getCoordinates(from);
+    const toCoords = await getCoordinates(to);
+
+    const routeRes = await fetch(
+      `https://router.project-osrm.org/route/v1/driving/${fromCoords.lon},${fromCoords.lat};${toCoords.lon},${toCoords.lat}?overview=full&geometries=geojson`
+    );
+    const routeData = await routeRes.json();
+    if (!routeData.routes || !routeData.routes.length) {
+      throw new Error("No route found");
+    }
+
+    const coords = routeData.routes[0].geometry.coordinates;
+
+    const sampled = [];
+    const step = Math.max(1, Math.floor(coords.length / 10));
+    for (let i = step; i < coords.length - step; i += step) {
+      sampled.push(coords[i]);
+    }
+
+    const namedVertices = [];
+    for (const [lon, lat] of sampled) {
+      const name = await reverseGeocode(lat, lon);
+      namedVertices.push(name);
+
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      select.appendChild(opt);
+    }
+
+    await fetch("/cgi-bin/routesapi.cgi", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        command: "add_route_from_osm",
+        from,
+        to,
+        intermediates: namedVertices
+      })
+    });
+
+    drawMap(fromCoords, toCoords, coords);
+
+  } catch (err) {
+    console.error("Pickup Error:", err);
+    const opt = document.createElement("option");
+    opt.textContent = "Error loading pickup points";
+    opt.disabled = true;
+    select.appendChild(opt);
+    mapDiv.style.display = "none";
+  }
+}
+
+function drawMap(fromCoords, toCoords, geometry) {
+  const mapDiv = document.getElementById("map");
+  mapDiv.style.display = "block";
+
+  if (!map) {
+    map = L.map('map');
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+  }
+
+  if (routeLayer) routeLayer.remove();
+
+  const routeCoords = geometry.map(([lon, lat]) => [lat, lon]);
+  routeLayer = L.polyline(routeCoords, { color: 'lime', weight: 4 }).addTo(map);
+  map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
+
+  L.marker([fromCoords.lat, fromCoords.lon]).addTo(map).bindPopup("Start: " + fromCoords.display);
+  L.marker([toCoords.lat, toCoords.lon]).addTo(map).bindPopup("End: " + toCoords.display);
+
+  setTimeout(() => map.invalidateSize(), 200);
+}
+
+document.getElementById("from").addEventListener("change", loadPickupPoints);
+document.getElementById("to").addEventListener("change", loadPickupPoints);
+
+</script>
+</body>
+</html>

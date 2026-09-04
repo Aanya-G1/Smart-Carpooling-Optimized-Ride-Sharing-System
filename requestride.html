@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Request Ride (Passenger)</title>
+<style>
+body {
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(135deg, #ff416c, #ff4b2b);
+  color: #fff;
+  margin: 0; padding: 0;
+  display: flex; flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+}
+.container {
+  background: rgba(0,0,50,0.85);
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+  margin-top: 2rem;
+  width: 90%; max-width: 600px;
+}
+input, select, button {
+  width: 100%;
+  margin-top: 10px;
+  padding: 0.6rem;
+  border-radius: 8px;
+  border: none;
+  font-size: 1rem;
+}
+button {
+  background: #ff5f6d;
+  color: white;
+  cursor: pointer;
+}
+button:hover { background: #ff7b81; }
+.back-btn {
+  background: #444;
+  margin-top: 1rem;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>🧍 Request a Ride</h2>
+  <label>Your Name:</label>
+<input type="text" id="passengerName" placeholder="Enter your name">
+  <label>From:</label>
+  <input type="text" id="from" placeholder="Your pickup location">
+
+  <label>To:</label>
+  <input type="text" id="to" placeholder="Your destination">
+
+  <button onclick="findRides()">Find Available Rides</button>
+  <select id="availableRides" style="display:none;"></select>
+
+  <button id="joinBtn" style="display:none;" onclick="joinRide()">Join Selected Ride</button>
+  <pre id="output">Waiting for input...</pre>
+  <button class="back-btn" onclick="window.location.href='matching.html'">⬅ Back</button>
+</div>
+
+<script>
+let rides = [];
+
+async function findRides() {
+  const from = document.getElementById("from").value.trim();
+  const to = document.getElementById("to").value.trim();
+  const output = document.getElementById("output");
+  const rideSelect = document.getElementById("availableRides");
+
+  if (!from || !to) {
+    output.textContent = "⚠️ Please enter both locations.";
+    return;
+  }
+
+  const payload = {
+    command: "find_rides",
+    from: from,
+    to: to
+  };
+
+  try {
+    const res = await fetch("/cgi-bin/ridematchingapi.cgi", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    if (!data.rides || data.rides.length === 0) {
+      output.textContent = "🚫 No rides found for this route.";
+      rideSelect.style.display = "none";
+      return;
+    }
+
+    rides = data.rides;
+    rideSelect.innerHTML = "";
+    rides.forEach((r, i) => {
+      const opt = document.createElement("option");
+      opt.value = i;
+      opt.textContent = `${r.driver} | ${r.from} → ${r.to} | ${r.time}`;
+      rideSelect.appendChild(opt);
+    });
+    rideSelect.style.display = "block";
+    document.getElementById("joinBtn").style.display = "block";
+    output.textContent = "✅ Select a ride and click Join.";
+  } catch (err) {
+    output.textContent = "❌ Error: " + err.message;
+  }
+}
+
+async function joinRide() {
+  const selectedIndex = document.getElementById("availableRides").value;
+  const ride = rides[selectedIndex];
+  const passenger = document.getElementById("passengerName").value.trim();
+  const output = document.getElementById("output");
+
+  if (!ride || !passenger) {
+    output.textContent = "⚠️ Please select a ride and enter your name.";
+    return;
+  }
+
+  const res = await fetch("/cgi-bin/ridematchingapi.cgi", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      command: "join_ride",
+      ride_id: ride.id,
+      passenger
+    })
+  });
+  const data = await res.json();
+
+  if (data.status === "success") {
+    output.textContent =
+      `✅ Ride Matched!\n` +
+      `Driver: ${ride.driver}\n` +
+      `Phone: ${ride.phone}\n` +        
+      `Vehicle: ${ride.vehicle}\n` +    
+      `Pickup ETA: ${ride.eta}\n` +
+      `Route: ${ride.from} → ${ride.to}`;
+  } else {
+    output.textContent = "❌ " + data.message;
+  }
+
+}
+</script>
+</body>
+</html>

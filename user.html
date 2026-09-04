@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Campus Students Ride Share</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "Poppins", sans-serif;
+            background: linear-gradient(135deg, #2563eb, #06b6d4);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 40px;
+            border-radius: 18px;
+            text-align: center;
+            width: 350px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+        }
+        h1 {
+            font-size: 28px;
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .login-btn {
+            background: #ffffff;
+            color: #2563eb;
+            font-weight: 600;
+        }
+        .signup-btn {
+            background: #0ea5e9;
+            color: white;
+            font-weight: 600;
+        }
+        button:hover {
+            opacity: 0.85;
+        }
+        .form-box {
+            display: none;
+            margin-top: 20px;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 6px;
+            border: none;
+        }
+        .back-btn {
+            margin-top: 10px;
+            background: #1e293b;
+            color: white;
+        }
+        .msg {
+            margin-top: 10px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Campus Students Ride Share</h1>
+
+    <button class="login-btn" onclick="showLogin()">Login</button>
+    <button class="signup-btn" onclick="showSignup()">Signup</button>
+
+    <!-- LOGIN FORM -->
+    <div id="loginBox" class="form-box">
+        <h2>Login</h2>
+        <input type="text" id="loginUser" placeholder="Username" />
+        <input type="password" id="loginPass" placeholder="Password" />
+        <button class="login-btn" onclick="doLogin()">Submit</button>
+        <button class="back-btn" onclick="goBack()">Back</button>
+        <div id="loginMsg" class="msg"></div>
+    </div>
+
+    <!-- SIGNUP FORM -->
+    <div id="signupBox" class="form-box">
+  <h2>Signup</h2>
+  <input type="text" id="sUser" placeholder="Choose Username" />
+  <input type="password" id="sPass" placeholder="Choose Password" />
+  <input type="text" id="sName" placeholder="Full Name" />
+  <input type="text" id="sPhone" placeholder="Phone Number" />
+  <input type="text" id="sVehicle" placeholder="Vehicle Number" />
+  <input type="hidden" id="sRole" value="user" />
+  <button class="signup-btn" onclick="doSignup()">Create Account</button>
+  <button class="back-btn" onclick="goBack()">Back</button>
+  <div id="signupMsg" class="msg"></div>
+</div>
+
+<script>
+    function showLogin() {
+        document.getElementById("loginBox").style.display = "block";
+        document.getElementById("signupBox").style.display = "none";
+    }
+
+    function showSignup() {
+        document.getElementById("signupBox").style.display = "block";
+        document.getElementById("loginBox").style.display = "none";
+    }
+
+    function goBack() {
+        document.getElementById("signupBox").style.display = "none";
+        document.getElementById("loginBox").style.display = "none";
+    }
+
+    async function doLogin() {
+        const data = {
+            action: "login",
+            username: document.getElementById("loginUser").value,
+            password: document.getElementById("loginPass").value
+        };
+
+        try {
+            const response = await fetch("/cgi-bin/user.cgi", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+
+            const text = await response.text();
+            console.log("Login raw response:", text);
+
+            let jsonStart = text.indexOf("{");
+            if (jsonStart === -1) {
+                document.getElementById("loginMsg").innerText = "Invalid server response: " + text;
+                return;
+            }
+
+            let res;
+            try {
+                res = JSON.parse(text.slice(jsonStart));
+            } catch (e) {
+                document.getElementById("loginMsg").innerText = "Invalid server response: " + text;
+                return;
+            }
+
+            if (res.status === "ok") {
+                if (res.role === "admin") {
+                    window.location.href = "/admin.html";
+                } else {
+                    window.location.href = "/matching.html";
+                }
+            } else {
+                document.getElementById("loginMsg").innerText = res.message;
+            }
+        } catch (err) {
+            document.getElementById("loginMsg").innerText = "Request failed. Please try again.";
+        }
+    }
+
+    async function doSignup() {
+  const data = {
+    action: "signup",
+    username: document.getElementById("sUser").value,
+    password: document.getElementById("sPass").value,
+    name: document.getElementById("sName").value,
+    phone: document.getElementById("sPhone").value,
+    vehicle: document.getElementById("sVehicle").value,
+    role: document.getElementById("sRole").value
+  };
+
+  const response = await fetch("/cgi-bin/user.cgi", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+  const text = await response.text();
+  let res = JSON.parse(text.slice(text.indexOf("{")));
+  document.getElementById("signupMsg").innerText =
+    res.status === "ok" ? "Signup successful!" : res.message;
+}
+
+</script>
+</body>
+</html>
